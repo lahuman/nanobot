@@ -118,7 +118,26 @@ class Nanobot:
 
 
 def _make_provider(config: Any) -> Any:
-    """Create the LLM provider from config (extracted from CLI)."""
+    """Create the LLM provider from config (extracted from CLI).
+
+    Supports automatic failover when fallback_models is configured.
+    """
+    # Check if failover is configured
+    fallback_models = getattr(config.agents.defaults, "fallback_models", None) or []
+
+    if not fallback_models:
+        # No fallbacks, use single provider as before
+        return _make_single_provider(config)
+
+    # Use FailoverProvider with fallback chain
+    from nanobot.providers.failover_provider import build_provider_chain
+
+    primary_model = config.agents.defaults.model
+    return build_provider_chain(config, primary_model, fallback_models)
+
+
+def _make_single_provider(config: Any) -> Any:
+    """Create a single LLM provider from config."""
     from nanobot.providers.base import GenerationSettings
     from nanobot.providers.registry import find_by_name
 
